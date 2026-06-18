@@ -172,57 +172,70 @@ class AyabotStatsPlugin(Star):
             logger.error(f"请求 Ayabot API 失败: {e}")
             return None
 
-    # ── 辅助：构建回复消息 ──
+    @staticmethod
+    def _fmt(val: int) -> str:
+        """格式化电池数，超过1000显示 xx.x k"""
+        if val >= 1000:
+            return f"{val / 1000:.1f}k"
+        return str(val)
 
     def _build_reply(self, data: dict, label: str) -> str:
         gift = data.get("gift", {})
         blind = data.get("blindbox", {})
         uname = data.get("uname", f"UID:{data.get('uid', '?')}")
+        uid = data.get("uid", "?")
+        danmaku_count = data.get("danmaku_count", -1)
 
         lines = [
             f"📊 {uname} 的{label}礼物数据",
             f"━━━━━━━━━━━━━━━━━━",
+            f"UID：{uid}",
         ]
 
         total_events = gift.get("total_events", 0)
         total_gift_count = gift.get("total_gift_count", 0)
-        total_value = gift.get("total_value_yuan", 0)
-        if total_events > 0:
-            lines.append(f"🎁 礼物投喂: {total_gift_count} 个（{total_events} 次）")
-            lines.append(f"💰 总价值: {total_value} 元")
-            # 礼物名称明细
-            gift_details = gift.get("details", [])
-            if gift_details:
-                parts = []
-                for d in gift_details:
-                    parts.append(f"{d['name']}x{d['count']}")
-                lines.append(f"📋 明细: {'、'.join(parts)}")
-        else:
-            lines.append("🎁 无送礼记录")
+        total_value = gift.get("total_value", 0)
 
+        if total_events > 0:
+            lines.append(f"总投喂：{self._fmt(total_value)} 电池")
+            if danmaku_count >= 0:
+                lines.append(f"弹幕数：{danmaku_count}")
+            lines.append(f"礼物数：{total_gift_count}")
+        else:
+            lines.append("暂无投喂记录")
+
+        # 盲盒摘要
         blind_count = blind.get("count", 0)
-        blind_cost = blind.get("cost_yuan", 0)
-        blind_actual = blind.get("actual_yuan", 0)
-        blind_profit = blind.get("profit_yuan", 0)
+        blind_cost = blind.get("cost", 0)
+        blind_actual = blind.get("actual", 0)
+        blind_profit = blind.get("profit", 0)
 
         if blind_count > 0:
-            lines.append(f"━━━━━━━━━━━━━━━━━━")
-            lines.append(f"📦 盲盒统计:")
-            lines.append(f"  数量: {blind_count} 个")
-            lines.append(f"  花费: {blind_cost} 元")
-            lines.append(f"  价值: {blind_actual} 元")
-            lines.append(f"  盈亏: {'' if blind_profit < 0 else '+'}{blind_profit} 元 {'✅' if blind_profit >= 0 else '❌'}")
-            # 盲盒名称明细
-            blind_details = blind.get("details", [])
-            if blind_details:
-                for bd in blind_details:
-                    items_str = "、".join([f"{i['name']}x{i['count']}" for i in bd.get("items", [])])
-                    profit_str = f"{'' if bd['profit_yuan'] < 0 else '+'}{bd['profit_yuan']}"
-                    lines.append(f"  📦 {bd['box_name']}: {bd['count']}个({profit_str})")
-                    lines.append(f"    └ {items_str}")
+            profit_str = f"{'' if blind_profit < 0 else '+'}{self._fmt(blind_profit)}"
+            lines.append(f"盲盒：{self._fmt(blind_cost)} 电池({profit_str}) 共{blind_count}个 盈亏：成本 {self._fmt(blind_cost)}/产出 {self._fmt(blind_actual)}")
         else:
-            lines.append(f"━━━━━━━━━━━━━━━━━━")
-            lines.append("📦 无盲盒记录")
+            lines.append("盲盒：无")
+
+        # 礼物详情
+        lines.append(f"")
+        lines.append(f"礼物详情：")
+        gift_details = gift.get("details", [])
+        if gift_details:
+            for d in gift_details:
+                lines.append(f"  {d['name']} x {d['count']} {self._fmt(d['value'])} 电池")
+        else:
+            lines.append(f"  （无）")
+
+        # 盲盒详情
+        blind_details = blind.get("details", [])
+        if blind_details:
+            for bd in blind_details:
+                box_profit_str = f"{'' if bd['profit'] < 0 else '+'}{self._fmt(bd['profit'])}"
+                lines.append(f"")
+                lines.append(f"{bd['box_name']} x {bd['count']} {box_profit_str}：")
+                for item in bd.get("items", []):
+                    item_profit = f"{'' if item['profit'] < 0 else '+'}{self._fmt(item['profit'])}"
+                    lines.append(f"  {item['name']} x {item['count']} {self._fmt(item['cost'])} 电池({item_profit})")
 
         return "\n".join(lines)
 
