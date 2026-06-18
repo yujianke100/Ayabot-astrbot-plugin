@@ -36,41 +36,43 @@ GIFT_CARD_HTML = '''<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'PingFang SC','Microsoft YaHei',sans-serif;}
 body{background:#fff;display:flex;justify-content:center;padding:0;}
-.card{width:600px;background:#fff;padding:20px 24px;}
+.card{width:340px;background:#fff;padding:14px 16px;}
 /* 顶部用户信息 */
-.user-header{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
-.avatar-wrap{position:relative;width:56px;height:56px;flex-shrink:0;}
-.avatar-wrap img.face{width:56px;height:56px;border-radius:50%;object-fit:cover;display:block;}
-.avatar-wrap .guard-frame{position:absolute;top:-4px;left:-4px;width:64px;height:64px;pointer-events:none;}
+.user-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.avatar-wrap{position:relative;width:48px;height:48px;flex-shrink:0;}
+.avatar-wrap img.face{width:48px;height:48px;border-radius:50%;object-fit:cover;display:block;}
+.avatar-wrap .guard-frame{position:absolute;top:-4px;left:-4px;width:56px;height:56px;pointer-events:none;}
 .user-info{flex:1;min-width:0;}
-.user-info .uname{font-size:20px;font-weight:700;color:#2d1b69;line-height:1.3;}
-.user-info .meta{font-size:13px;color:#8b7dad;margin-top:2px;}
-.badge{display:inline-block;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:13px;font-weight:600;padding:4px 14px;border-radius:20px;flex-shrink:0;align-self:flex-start;margin-top:4px;}
-.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(120,80,200,0.12),transparent);margin:12px 0;}
-/* 统计网格 */
-.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;}
-.stat-item{background:rgba(120,80,200,0.04);border-radius:10px;padding:10px;text-align:center;}
-.stat-item .s-label{font-size:11px;color:#8b7dad;margin-bottom:2px;}
-.stat-item .s-value{font-size:18px;font-weight:700;color:#2d1b69;}
-.section-title{font-size:15px;font-weight:700;color:#2d1b69;margin:12px 0 8px;}
-/* 礼物行 - 三列对齐 */
-.gift-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:9px 12px;background:rgba(120,80,200,0.02);border-radius:8px;margin-bottom:4px;}
-.gift-row .gift-icon{width:28px;height:28px;border-radius:6px;object-fit:contain;}
-.gift-row .gift-name{color:#4a3580;font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.gift-row .gift-count{color:#8b7dad;font-size:13px;text-align:right;white-space:nowrap;}
-.gift-row .gift-value{color:#7c3aed;font-weight:600;font-size:14px;text-align:right;white-space:nowrap;min-width:60px;}
+.user-info .uname{font-size:17px;font-weight:700;color:#2d1b69;line-height:1.3;}
+.user-info .meta{font-size:12px;color:#8b7dad;margin-top:1px;}
+.badge{display:inline-block;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:12px;font-weight:600;padding:3px 12px;border-radius:20px;flex-shrink:0;align-self:flex-start;margin-top:2px;}
+.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(120,80,200,0.12),transparent);margin:10px 0;}
+/* 统计网格 2列 */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;}
+.stat-item{background:rgba(120,80,200,0.04);border-radius:8px;padding:8px;text-align:center;}
+.stat-item .s-label{font-size:10px;color:#8b7dad;margin-bottom:1px;}
+.stat-item .s-value{font-size:16px;font-weight:700;color:#2d1b69;}
+.section-title{font-size:14px;font-weight:700;color:#2d1b69;margin:10px 0 6px;}
+/* 礼物网格 - 2列 */
+.gift-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.gift-item{display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(120,80,200,0.02);border-radius:6px;}
+.gift-item .gift-icon{width:22px;height:22px;border-radius:4px;object-fit:contain;flex-shrink:0;}
+.gift-item .gift-info{flex:1;min-width:0;}
+.gift-item .gift-info .gift-name{color:#4a3580;font-weight:500;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gift-item .gift-info .gift-meta{display:flex;justify-content:space-between;font-size:11px;color:#8b7dad;margin-top:1px;}
+.gift-item .gift-info .gift-meta .gift-value{color:#7c3aed;font-weight:600;}
 /* 盲盒 */
-.box-header{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 12px;background:rgba(124,58,237,0.07);border-radius:8px;margin:6px 0 3px;}
-.box-header .box-title{font-size:14px;font-weight:600;color:#2d1b69;}
-.box-header .box-profit{font-size:13px;font-weight:600;text-align:right;}
-.box-item{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:5px 12px 5px 18px;}
-.box-item .box-icon{width:22px;height:22px;border-radius:4px;object-fit:contain;}
-.box-item .box-name{font-size:13px;color:#5a4570;}
-.box-item .box-num{font-size:12px;color:#8b7dad;text-align:right;}
-.box-item .box-profit{font-size:13px;text-align:right;min-width:50px;}
+.box-header{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:rgba(124,58,237,0.07);border-radius:6px;margin:4px 0 2px;}
+.box-header .box-title{font-size:13px;font-weight:600;color:#2d1b69;}
+.box-header .box-profit{font-size:12px;font-weight:600;}
+.box-item{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 14px;}
+.box-item .box-icon{width:18px;height:18px;border-radius:3px;object-fit:contain;flex-shrink:0;}
+.box-item .box-name{flex:1;font-size:12px;color:#5a4570;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.box-item .box-num{font-size:11px;color:#8b7dad;text-align:right;white-space:nowrap;}
+.box-item .box-profit{font-size:12px;text-align:right;min-width:44px;}
 .profit-plus{color:#10b981;}
 .profit-minus{color:#ef4444;}
-.footer{text-align:center;font-size:11px;color:#c0b0d8;margin-top:16px;}
+.footer{text-align:center;font-size:10px;color:#c0b0d8;margin-top:12px;padding-top:8px;border-top:1px solid rgba(120,80,200,0.08);}
 </style></head><body><div class="card">
 <div class="user-header">
   <div class="avatar-wrap">
@@ -93,17 +95,21 @@ body{background:#fff;display:flex;justify-content:center;padding:0;}
   {% if blind_count > 0 %}
   <div class="stat-item"><div class="s-label">盲盒</div><div class="s-value">{{ blind_count }}个</div></div>
   <div class="stat-item"><div class="s-label">盈亏</div><div class="s-value" style="color:{{ 'rgb(16,185,129)' if blind_profit >= 0 else 'rgb(239,68,68)' }}">{{ '%+d'|format(blind_profit) }}</div></div>
+  <div class="stat-item"><div class="s-label">成本</div><div class="s-value" style="font-size:14px;">{{ blind_cost }}</div></div>
+  <div class="stat-item"><div class="s-label">产出</div><div class="s-value" style="font-size:14px;">{{ blind_actual }}</div></div>
   {% endif %}
 </div>
 {% if gift_details %}<div class="divider"></div><div class="section-title">🎀 礼物明细</div>
+<div class="gift-grid">
 {% for d in gift_details %}
-<div class="gift-row">
-  {% if d.icon %}<img class="gift-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% else %}<div style="width:28px"></div>{% endif %}
-  <span class="gift-name">{{ d.name }}</span>
-  <span class="gift-count">×{{ d.count }}</span>
-  <span class="gift-value">{{ d.value }}</span>
+<div class="gift-item">
+  {% if d.icon %}<img class="gift-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% else %}<div style="width:22px"></div>{% endif %}
+  <div class="gift-info">
+    <div class="gift-name">{{ d.name }}</div>
+    <div class="gift-meta"><span>×{{ d.count }}</span><span class="gift-value">{{ d.value }}</span></div>
+  </div>
 </div>
-{% endfor %}{% endif %}
+{% endfor %}</div>{% endif %}
 {% if blind_details %}<div class="divider"></div><div class="section-title">📦 盲盒明细</div>
 {% for bd in blind_details %}
 <div class="box-header">
@@ -112,7 +118,7 @@ body{background:#fff;display:flex;justify-content:center;padding:0;}
 </div>
 {% for item in bd.get('items',[]) %}
 <div class="box-item">
-  {% if item.icon %}<img class="box-icon" src="{{ item.icon }}" alt="" onerror="this.style.display='none'">{% else %}<div style="width:22px"></div>{% endif %}
+  {% if item.icon %}<img class="box-icon" src="{{ item.icon }}" alt="" onerror="this.style.display='none'">{% else %}<div style="width:18px"></div>{% endif %}
   <span class="box-name">{{ item.name }}</span>
   <span class="box-num">×{{ item.count }}</span>
   <span class="box-profit {{ 'profit-plus' if item.profit >= 0 else 'profit-minus' }}">{{ '%+d'|format(item.profit) }}</span>
@@ -487,6 +493,8 @@ class AyabotStatsPlugin(Star):
             "danmaku_count": data.get("danmaku_count", -1),
             "gift_count": str(gift.get("total_gift_count", 0)),
             "blind_count": blind.get("count", 0),
+            "blind_cost": self._fmt(blind.get("cost", 0)),
+            "blind_actual": self._fmt(blind.get("actual", 0)),
             "blind_profit": blind.get("profit", 0),
             "gift_details": gift_details,
             "blind_details": blind_details,
