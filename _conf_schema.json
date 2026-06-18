@@ -1,4 +1,11 @@
 {
+  "render_mode": {
+    "description": "查询结果发送方式",
+    "hint": "text=纯文字, image=图片渲染, both=同时发送文字和图片",
+    "type": "string",
+    "default": "text",
+    "options": ["text", "image", "both"]
+  },
   "groups": {
     "type": "template_list",
     "description": "QQ 群 API 配置列表（每个群独立设置）",

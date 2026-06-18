@@ -25,8 +25,60 @@ import httpx
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
+import astrbot.api.message_components as Comp
 
 
+# ═══════════════════════════════════════════
+#  HTML 渲染模板
+# ═══════════════════════════════════════════
+
+GIFT_CARD_HTML = '''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'PingFang SC','Microsoft YaHei',sans-serif;}
+body{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px;}
+.card{max-width:520px;width:100%;background:linear-gradient(145deg,#fefefe,#f5f0ff);border-radius:20px;padding:28px;box-shadow:0 8px 32px rgba(120,80,200,0.15);border:1px solid rgba(120,80,200,0.08);}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.title{font-size:20px;font-weight:700;color:#2d1b69;}
+.badge{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:12px;padding:4px 14px;border-radius:20px;}
+.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(120,80,200,0.2),transparent);margin:14px 0;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.info-item{background:rgba(120,80,200,0.05);border-radius:12px;padding:12px;text-align:center;}
+.info-item .label{font-size:11px;color:#8b7dad;margin-bottom:4px;}
+.info-item .value{font-size:18px;font-weight:700;color:#2d1b69;}
+.section-title{font-size:14px;font-weight:700;color:#2d1b69;margin:12px 0 8px;}
+.gift-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(120,80,200,0.03);border-radius:10px;margin-bottom:4px;font-size:13px;}
+.gift-row .gift-name{color:#4a3580;font-weight:500;}
+.gift-row .gift-count{color:#8b7dad;}
+.gift-row .gift-value{color:#7c3aed;font-weight:600;}
+.box-header{display:flex;justify-content:space-between;padding:8px 12px;background:rgba(124,58,237,0.08);border-radius:10px;margin:6px 0 4px;font-size:13px;font-weight:600;color:#2d1b69;}
+.box-item{display:flex;justify-content:space-between;padding:4px 12px 4px 24px;font-size:12px;color:#5a4570;}
+.profit-plus{color:#10b981;}
+.profit-minus{color:#ef4444;}
+.footer{text-align:center;font-size:11px;color:#b0a0c8;margin-top:16px;}
+</style></head><body><div class="card">
+<div class="header"><span class="title">🎁 {{ uname }}</span><span class="badge">{{ label }}</span></div>
+<div class="info-grid">
+<div class="info-item"><div class="label">UID</div><div class="value">{{ uid }}</div></div>
+<div class="info-item"><div class="label">总投喂</div><div class="value">{{ total_value }}</div></div>
+{% if danmaku_count >= 0 %}<div class="info-item"><div class="label">弹幕数</div><div class="value">{{ danmaku_count }}</div></div>{% endif %}
+<div class="info-item"><div class="label">礼物数</div><div class="value">{{ gift_count }}</div></div>
+{% if blind_count > 0 %}
+<div class="info-item"><div class="label">盲盒</div><div class="value">{{ blind_count }}个</div></div>
+<div class="info-item"><div class="label">盈亏</div><div class="value" style="color:{{ 'rgb(16,185,129)' if blind_profit >= 0 else 'rgb(239,68,68)' }}">{{ '%+d'|format(blind_profit) }}</div></div>
+{% endif %}
+</div>
+{% if gift_details %}<div class="divider"></div><div class="section-title">🎀 礼物详情</div>
+{% for d in gift_details %}
+<div class="gift-row"><span class="gift-name">{{ d.name }}</span><span class="gift-count">x{{ d.count }}</span><span class="gift-value">{{ d.value }}</span></div>
+{% endfor %}{% endif %}
+{% if blind_details %}<div class="divider"></div><div class="section-title">📦 盲盒详情</div>
+{% for bd in blind_details %}
+<div class="box-header"><span>{{ bd.box_name }} x{{ bd.count }}</span><span class="{{ 'profit-plus' if bd.profit >= 0 else 'profit-minus' }}">{{ '%+d'|format(bd.profit) }}</span></div>
+{% for item in bd.get('items',[]) %}
+<div class="box-item"><span>{{ item.name }} x{{ item.count }}</span><span class="{{ 'profit-plus' if item.profit >= 0 else 'profit-minus' }}">{{ '%+d'|format(item.profit) }}</span></div>
+{% endfor %}{% endfor %}{% endif %}
+<div class="footer">Ayabot 礼物统计 · {{ label }}</div>
+</div></body></html>'''
 
 
 def _get_data_dir() -> Path:
@@ -39,6 +91,7 @@ class AyabotStatsPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig) -> None:
         super().__init__(context)
         self.config = config
+        self.render_mode = str(config.get("render_mode", "text"))
 
         # 按群配置列表（来自 _conf_schema.json template_list）
         self._group_configs: dict[str, dict] = {}
@@ -181,7 +234,7 @@ class AyabotStatsPlugin(Star):
             return f"{val / 1000:.1f}k"
         return str(val)
 
-    def _build_reply(self, data: dict, label: str) -> str:
+    def _build_text_reply(self, data: dict, label: str) -> str:
         gift = data.get("gift", {})
         blind = data.get("blindbox", {})
         uname = data.get("uname", f"UID:{data.get('uid', '?')}")
@@ -241,27 +294,6 @@ class AyabotStatsPlugin(Star):
 
         return "\n".join(lines)
 
-    async def _query_and_reply(self, event: AstrMessageEvent, period: str, label: str) -> str:
-        """查询并返回结果文本（根据消息来源群使用对应 API 配置）。"""
-        qq_id = event.get_sender_id()
-        group_id = event.get_group_id() if hasattr(event, "get_group_id") else ""
-
-        if not qq_id:
-            return "无法获取发送者信息。"
-
-        bili_uid = self._get_bili_uid(qq_id)
-        if bili_uid is None:
-            return "❌ 你尚未绑定 B站 UID。\n请先使用 /绑定 <你的B站UID> 进行绑定。"
-
-        data = await self._query_user_stats(bili_uid, period, group_id)
-        if data is None:
-            return (
-                "❌ 查询失败。\n"
-                "可能原因：该群未配置 API、API 配置错误或 Ayabot 服务未运行。\n"
-                "请联系群管理员使用 /设置API 或前往 WebUI 插件配置页添加本群配置。"
-            )
-
-        return self._build_reply(data, label)
 
     # ═══════════════════════════════════════════
     #  指令：绑定 UID（全局）
@@ -304,7 +336,7 @@ class AyabotStatsPlugin(Star):
 
     @filter.command("礼物查询")
     async def query_gift(self, event: AstrMessageEvent):
-        """查询礼物/盲盒统计。后跟 today/week/month/all 指定范围，默认今天。根据当前群使用的 API 配置查询。"""
+        """查询礼物/盲盒统计。后跟 today/week/month/all 指定范围，默认今天。根据 render_mode 配置决定发送方式。"""
         text = event.message_str.strip()
         parts = text.split()
         period_map = {
@@ -319,9 +351,102 @@ class AyabotStatsPlugin(Star):
         else:
             period = "today"
         label_map = {"today": "本日", "week": "本周", "month": "本月", "all": "全部记录"}
+        label = label_map.get(period, "本日")
 
-        result = await self._query_and_reply(event, period, label_map.get(period, "本日"))
-        yield event.plain_result(result)
+        # 获取数据
+        data, err = await self._query_data(event, period, label)
+        if err:
+            yield event.plain_result(err)
+            return
+
+        # 根据 render_mode 发送
+        mode = self.render_mode
+        if mode == "image":
+            # 仅图片
+            try:
+                img_data = self._build_image_data(data, label)
+                url = await self.html_render(GIFT_CARD_HTML, img_data)
+                yield event.image_result(url)
+            except Exception as e:
+                logger.warning(f"图片渲染失败，回退到文字: {e}")
+                yield event.plain_result(self._build_text_reply(data, label))
+        elif mode == "both":
+            # 文字 + 图片
+            yield event.plain_result(self._build_text_reply(data, label))
+            try:
+                img_data = self._build_image_data(data, label)
+                url = await self.html_render(GIFT_CARD_HTML, img_data)
+                yield event.image_result(url)
+            except Exception as e:
+                logger.warning(f"图片渲染失败: {e}")
+        else:
+            # 纯文字
+            yield event.plain_result(self._build_text_reply(data, label))
+
+    async def _query_data(self, event: AstrMessageEvent, period: str, label: str) -> tuple[Optional[dict], str]:
+        """查询数据，返回 (data, error_msg)。data 为 None 时 error_msg 有值。"""
+        qq_id = event.get_sender_id()
+        group_id = event.get_group_id() if hasattr(event, "get_group_id") else ""
+
+        if not qq_id:
+            return None, "无法获取发送者信息。"
+
+        bili_uid = self._get_bili_uid(qq_id)
+        if bili_uid is None:
+            return None, "❌ 你尚未绑定 B站 UID。\n请先使用 /绑定 <你的B站UID> 进行绑定。"
+
+        data = await self._query_user_stats(bili_uid, period, group_id)
+        if data is None:
+            return None, (
+                "❌ 查询失败。\n"
+                "可能原因：该群未配置 API、API 配置错误或 Ayabot 服务未运行。\n"
+                "请联系群管理员使用 /设置API 或前往 WebUI 插件配置页添加本群配置。"
+            )
+
+        return data, ""
+
+    def _build_image_data(self, data: dict, label: str) -> dict:
+        """构建图片渲染用的数据。"""
+        gift = data.get("gift", {})
+        blind = data.get("blindbox", {})
+
+        total_value = gift.get("total_value", 0)
+        gift_details = []
+        for d in gift.get("details", []):
+            gift_details.append({
+                "name": d["name"],
+                "count": d["count"],
+                "value": self._fmt(d.get("value", 0)),
+            })
+
+        blind_details = []
+        for bd in blind.get("details", []):
+            items = []
+            for item in bd.get("items", []):
+                items.append({
+                    "name": item["name"],
+                    "count": item["count"],
+                    "profit": item.get("profit", 0),
+                })
+            blind_details.append({
+                "box_name": bd["box_name"],
+                "count": bd["count"],
+                "profit": bd.get("profit", 0),
+                "items": items,
+            })
+
+        return {
+            "uname": data.get("uname", f"UID:{data.get('uid', '?')}"),
+            "uid": str(data.get("uid", "?")),
+            "label": label,
+            "total_value": self._fmt(total_value),
+            "danmaku_count": data.get("danmaku_count", -1),
+            "gift_count": str(gift.get("total_gift_count", 0)),
+            "blind_count": blind.get("count", 0),
+            "blind_profit": blind.get("profit", 0),
+            "gift_details": gift_details,
+            "blind_details": blind_details,
+        }
 
     # ═══════════════════════════════════════════
     #  指令：群 API 配置管理（仅管理员）
@@ -329,7 +454,7 @@ class AyabotStatsPlugin(Star):
 
     @filter.command("设置API")
     @filter.permission_type(filter.PermissionType.ADMIN)
-    async def set_group_api(self, event: AstrMessageEvent, api_url: str, api_token: str, room_id: str = "") -> None:
+    async def set_group_api(self, event: AstrMessageEvent, api_url: str, api_token: str, room_id: str = ""):
         """设置当前群的 Ayabot API 配置。需要群管理员权限。
         用法：/设置API <API地址> <API密钥> [房间号]
         例如：/设置API http://192.168.1.100:19810 xxxxxxxx 1992696442"""
