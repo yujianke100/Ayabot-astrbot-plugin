@@ -174,8 +174,10 @@ class AyabotStatsPlugin(Star):
 
     @staticmethod
     def _fmt(val: int) -> str:
-        """格式化电池数，超过1000显示 xx.x k"""
-        if val >= 1000:
+        """格式化电池数"""
+        if val >= 10000:
+            return f"{val / 10000:.1f}万"
+        elif val >= 1000:
             return f"{val / 1000:.1f}k"
         return str(val)
 
