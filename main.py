@@ -62,7 +62,9 @@ body{background:#fff;display:flex;justify-content:center;padding:0;}
 .blind-card .bc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .blind-card .bc-header .bc-title{font-size:13px;font-weight:700;color:#7c3aed;}
 .blind-card .bc-header .bc-count{font-size:12px;color:#8b7dad;}
-.blind-card .bc-value{text-align:center;font-size:24px;font-weight:800;color:#2d1b69;padding:6px 0;}
+.blind-card .bc-value{text-align:center;font-size:24px;font-weight:800;padding:6px 0;}
+.blind-card .bc-value.profit-plus{color:#10b981;}
+.blind-card .bc-value.profit-minus{color:#ef4444;}
 .blind-card .bc-profit{text-align:center;font-size:11px;color:#8b7dad;padding:4px 0 0;}
 .blind-card .bc-profit .bc-profit-val{font-weight:700;}
 /* 礼物网格 - 2列 */
@@ -74,7 +76,7 @@ body{background:#fff;display:flex;justify-content:center;padding:0;}
 .gift-item .gift-info .gift-meta{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#8b7dad;margin-top:1px;}
 .gift-item .gift-info .gift-meta .gift-value{color:#7c3aed;font-weight:600;}
 /* 盲盒明细卡片 */
-.box-card{border-radius:10px;padding:10px 12px;margin-bottom:6px;border:1px solid rgba(0,0,0,0.06);box-shadow:0 1px 3px rgba(0,0,0,0.06);}
+.box-card{border-radius:10px;padding:10px 12px;margin-bottom:6px;background:rgba(120,80,200,0.03);border:1px solid rgba(0,0,0,0.06);box-shadow:0 1px 3px rgba(0,0,0,0.06);}
 .box-card .bc-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
 .box-card .bc-hdr .bc-name{font-size:13px;font-weight:600;color:#2d1b69;}
 .box-card .bc-hdr .bc-info{font-size:12px;font-weight:600;}
@@ -96,10 +98,14 @@ body{background:#fff;display:flex;justify-content:center;padding:0;}
 <div class="user-header">
   <div class="avatar-wrap">
     {% if avatar %}<img class="face" src="{{ avatar }}" alt="" onerror="this.style.display='none'">{% endif %}
-    <svg class="guard-frame" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="32" cy="32" r="30" stroke="#c084fc" stroke-width="2" fill="none" opacity="0.6"/>
-      <circle cx="32" cy="32" r="28" stroke="#a78bfa" stroke-width="1" fill="none" opacity="0.3"/>
-    </svg>
+    {% if guard_level > 0 %}<svg class="guard-frame" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {% if guard_level == 3 %}<circle cx="32" cy="32" r="30" stroke="#c084fc" stroke-width="2" fill="none" opacity="0.8"/>
+      <circle cx="32" cy="32" r="28" stroke="#a78bfa" stroke-width="1" fill="none" opacity="0.4"/>
+      {% elif guard_level == 2 %}<circle cx="32" cy="32" r="30" stroke="#a78bfa" stroke-width="2" fill="none" opacity="0.8"/>
+      <circle cx="32" cy="32" r="28" stroke="#8b5cf6" stroke-width="1" fill="none" opacity="0.4"/>
+      {% else %}<circle cx="32" cy="32" r="30" stroke="#f59e0b" stroke-width="2" fill="none" opacity="0.8"/>
+      <circle cx="32" cy="32" r="28" stroke="#d97706" stroke-width="1" fill="none" opacity="0.4"/>
+      {% endif %}</svg>{% endif %}
   </div>
   <div class="user-info">
     <div class="uname">{{ uname }}</div>
@@ -524,6 +530,7 @@ class AyabotStatsPlugin(Star):
             "uname": data.get("uname", f"UID:{data.get('uid', '?')}"),
             "uid": str(data.get("uid", "?")),
             "avatar": data.get("avatar", ""),
+            "guard_level": int(data.get("guard_level", 0)),
             "label": label,
             "total_value": self._fmt(total_value),
             "danmaku_count": data.get("danmaku_count", -1),
