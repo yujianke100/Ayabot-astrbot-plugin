@@ -81,6 +81,8 @@ class AyabotStatsPlugin(Star):
             })
         self.config["groups"] = entries
         self.config.save_config()
+
+    def _load_bindings(self) -> None:
         if self.bindings_path.exists():
             try:
                 raw = json.loads(self.bindings_path.read_text(encoding="utf-8"))
