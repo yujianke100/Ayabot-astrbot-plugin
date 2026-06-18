@@ -1,9 +1,10 @@
-FROM mcr.microsoft.com/playwright/python:v1.60.0-noble
+FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# 安装 Playwright + Chromium（仅 Chromium，不含 Firefox/WebKit）
+RUN pip install --no-cache-dir playwright>=1.40.0 fastapi>=0.100.0 uvicorn>=0.23.0 \
+    && playwright install --with-deps chromium
 
 COPY server.py .
 
