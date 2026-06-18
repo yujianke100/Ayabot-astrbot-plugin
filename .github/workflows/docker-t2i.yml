@@ -1,0 +1,28 @@
+name: Build & Push t2i-local
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "t2i-local/**"
+      - ".github/workflows/docker-t2i.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./t2i-local
+          push: true
+          tags: ghcr.io/yujianke100/astrbot_plugin_ayabot_stats/t2i-local:latest
