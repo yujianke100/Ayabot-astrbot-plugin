@@ -1,26 +1,32 @@
 {
+  "group_config_file": {
+    "description": "按群 API 配置数据文件路径",
+    "hint": "每个 QQ 群可独立设置 api_url/api_token/room_id，相对于 AstrBot data 目录",
+    "type": "string",
+    "default": "ayabot_groups.json"
+  },
+  "bindings_file": {
+    "description": "QQ-UID 绑定数据文件路径（全局通用）",
+    "hint": "相对于 AstrBot data 目录",
+    "type": "string",
+    "default": "ayabot_bindings.json"
+  },
   "api_url": {
-    "description": "Ayabot 服务地址",
-    "hint": "例如 http://192.168.1.100:19810，在 Ayabot WebUI → 数据管理 → API 外部接口中查看完整地址",
+    "description": "默认 Ayabot 服务地址（按群未设置时使用）",
+    "hint": "例如 http://192.168.1.100:19810",
     "type": "string",
     "default": ""
   },
   "api_token": {
-    "description": "Ayabot API 密钥",
-    "hint": "在 Ayabot WebUI → 数据管理 → 开启 API → 复制密钥",
+    "description": "默认 API 密钥（按群未设置时使用）",
+    "hint": "从 Ayabot WebUI → 数据管理 → 复制密钥",
     "type": "string",
     "default": ""
   },
   "room_id": {
-    "description": "Ayabot 房间号",
-    "hint": "必填，在 Ayabot WebUI → 数据管理 → API 地址中可看到 room_id=xxx",
+    "description": "默认房间号（按群未设置时使用）",
+    "hint": "在 Ayabot WebUI → 数据管理 → API 地址中可看到 room_id=xxx",
     "type": "string",
     "default": ""
-  },
-  "bindings_file": {
-    "description": "QQ-UID 绑定数据文件路径",
-    "hint": "相对于 AstrBot data 目录",
-    "type": "string",
-    "default": "ayabot_bindings.json"
   }
 }

@@ -4,6 +4,13 @@ Ayabot 礼物统计查询插件
 配合 Ayabot B站直播间机器人使用，让 QQ 群成员可以：
   - 绑定自己的 B站 UID
   - 查询本日/本周/本月/全部时间的礼物投喂、盲盒数量与盈亏
+
+指令列表:
+  /绑定 <B站UID>          绑定自己的 QQ 号到 B站 UID
+  /解绑                   解除绑定
+  /礼物查询 [today|week|month|all]  查询礼物/盲盒统计（默认今天）
+  /设置API <URL> <密钥> [房间号]    群管理员设置本群的 API 配置
+  /查看API                查看当前群的 API 配置状态
 """
 
 from __future__ import annotations
@@ -20,6 +27,9 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 
 
+GROUP_ID_PREFIX = "group_"
+
+
 def _get_data_dir() -> Path:
     """获取 AstrBot data 目录路径（插件应在此目录下存储持久化数据）。"""
     data_dir = os.environ.get("ASTRBOT_DATA_DIR", "data")
@@ -31,22 +41,32 @@ class AyabotStatsPlugin(Star):
         super().__init__(context)
         self.config = config
 
-        # 读取配置
-        self.api_url = str(config.get("api_url", "")).rstrip("/")
-        self.api_token = str(config.get("api_token", ""))
-        self.room_id = str(config.get("room_id", ""))
-        bindings_rel = str(config.get("bindings_file", "ayabot_bindings.json"))
+        # 默认全局配置（按群未设置时回退使用）
+        self.default_api_url = str(config.get("api_url", "")).rstrip("/")
+        self.default_api_token = str(config.get("api_token", ""))
+        self.default_room_id = str(config.get("room_id", ""))
 
-        # 绑定数据存储路径
+        # 文件路径
+        bindings_rel = str(config.get("bindings_file", "ayabot_bindings.json"))
+        groups_rel = str(config.get("group_config_file", "ayabot_groups.json"))
+
+        # QQ-UID 绑定（全局）
         self.bindings_path = _get_data_dir() / bindings_rel
         self.bindings_path.parent.mkdir(parents=True, exist_ok=True)
         self._bindings: dict[str, int] = {}  # qq_id -> bili_uid
         self._load_bindings()
 
-    # ── 绑定数据持久化 ──
+        # 按群 API 配置
+        self.groups_path = _get_data_dir() / groups_rel
+        self.groups_path.parent.mkdir(parents=True, exist_ok=True)
+        self._group_configs: dict[str, dict] = {}  # group_id -> {api_url, api_token, room_id}
+        self._load_group_configs()
+
+    # ═══════════════════════════════════════════
+    #  绑定数据持久化（全局）
+    # ═══════════════════════════════════════════
 
     def _load_bindings(self) -> None:
-        """从 JSON 文件加载 QQ-UID 绑定关系。"""
         if self.bindings_path.exists():
             try:
                 raw = json.loads(self.bindings_path.read_text(encoding="utf-8"))
@@ -57,7 +77,6 @@ class AyabotStatsPlugin(Star):
                 self._bindings = {}
 
     def _save_bindings(self) -> None:
-        """将 QQ-UID 绑定关系保存到 JSON 文件。"""
         try:
             self.bindings_path.write_text(
                 json.dumps(self._bindings, ensure_ascii=False, indent=2),
@@ -67,16 +86,13 @@ class AyabotStatsPlugin(Star):
             logger.error(f"保存绑定数据失败: {e}")
 
     def _get_bili_uid(self, qq_id: str) -> Optional[int]:
-        """根据 QQ 号查询绑定的 B站 UID。"""
         return self._bindings.get(str(qq_id))
 
     def _set_binding(self, qq_id: str, bili_uid: int) -> None:
-        """绑定 QQ 号与 B站 UID。"""
         self._bindings[str(qq_id)] = bili_uid
         self._save_bindings()
 
     def _unset_binding(self, qq_id: str) -> bool:
-        """解绑 QQ 号。"""
         key = str(qq_id)
         if key in self._bindings:
             del self._bindings[key]
@@ -84,28 +100,80 @@ class AyabotStatsPlugin(Star):
             return True
         return False
 
-    # ── API 调用 ──
+    # ═══════════════════════════════════════════
+    #  按群 API 配置持久化
+    # ═══════════════════════════════════════════
 
-    async def _query_user_stats(self, uid: int, period: str) -> Optional[dict]:
-        """调用 Ayabot API 查询用户统计。"""
-        if not self.api_url:
+    def _load_group_configs(self) -> None:
+        if self.groups_path.exists():
+            try:
+                raw = json.loads(self.groups_path.read_text(encoding="utf-8"))
+                self._group_configs = {str(k): v for k, v in raw.items()}
+                logger.info(f"已加载 {len(self._group_configs)} 个群的 API 配置")
+            except Exception as e:
+                logger.warning(f"加载群配置失败: {e}")
+                self._group_configs = {}
+
+    def _save_group_configs(self) -> None:
+        try:
+            self.groups_path.write_text(
+                json.dumps(self._group_configs, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception as e:
+            logger.error(f"保存群配置失败: {e}")
+
+    def _get_group_config(self, group_id: str) -> dict:
+        """获取指定群的 API 配置，缺失字段回退到全局默认。"""
+        cfg = self._group_configs.get(group_id, {})
+        return {
+            "api_url": cfg.get("api_url", "") or self.default_api_url,
+            "api_token": cfg.get("api_token", "") or self.default_api_token,
+            "room_id": cfg.get("room_id", "") or self.default_room_id,
+        }
+
+    def _set_group_config(self, group_id: str, api_url: str, api_token: str, room_id: str) -> None:
+        self._group_configs[str(group_id)] = {
+            "api_url": api_url,
+            "api_token": api_token,
+            "room_id": room_id,
+        }
+        self._save_group_configs()
+
+    # ═══════════════════════════════════════════
+    #  API 调用
+    # ═══════════════════════════════════════════
+
+    async def _query_user_stats(self, uid: int, period: str, group_id: str = "") -> Optional[dict]:
+        """调用 Ayabot API 查询用户统计（按群配置）。"""
+        cfg = self._get_group_config(group_id) if group_id else {
+            "api_url": self.default_api_url,
+            "api_token": self.default_api_token,
+            "room_id": self.default_room_id,
+        }
+
+        api_url = cfg["api_url"]
+        api_token = cfg["api_token"]
+        room_id = cfg["room_id"]
+
+        if not api_url:
             logger.error("api_url 未配置")
             return None
-        if not self.api_token:
+        if not api_token:
             logger.error("api_token 未配置")
             return None
 
-        params = {"uid": uid, "period": period, "token": self.api_token}
-        if self.room_id:
-            params["room_id"] = self.room_id
+        params = {"uid": uid, "period": period, "token": api_token}
+        if room_id:
+            params["room_id"] = room_id
 
-        url = f"{self.api_url}/api/external/user_stats"
+        url = f"{api_url}/api/external/user_stats"
 
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.get(url, params=params)
                 if resp.status_code == 401:
-                    logger.error("API Token 认证失败，请检查 api_token 配置")
+                    logger.error("API 密钥认证失败，请检查配置")
                     return None
                 if resp.status_code != 200:
                     logger.error(f"API 返回错误: {resp.status_code} {resp.text}")
@@ -125,7 +193,6 @@ class AyabotStatsPlugin(Star):
     # ── 辅助：构建回复消息 ──
 
     def _build_reply(self, data: dict, label: str) -> str:
-        """根据 API 返回数据构建回复文本。"""
         gift = data.get("gift", {})
         blind = data.get("blindbox", {})
         uname = data.get("uname", f"UID:{data.get('uid', '?')}")
@@ -166,8 +233,10 @@ class AyabotStatsPlugin(Star):
         return "\n".join(lines)
 
     async def _query_and_reply(self, event: AstrMessageEvent, period: str, label: str) -> str:
-        """查询并返回结果文本。"""
+        """查询并返回结果文本（根据消息来源群使用对应 API 配置）。"""
         qq_id = event.get_sender_id()
+        group_id = event.get_group_id() if hasattr(event, "get_group_id") else ""
+
         if not qq_id:
             return "无法获取发送者信息。"
 
@@ -175,25 +244,23 @@ class AyabotStatsPlugin(Star):
         if bili_uid is None:
             return "❌ 你尚未绑定 B站 UID。\n请先使用 /绑定 <你的B站UID> 进行绑定。"
 
-        if not self.api_url:
-            return "❌ 插件未配置 Ayabot 服务地址（api_url），请联系管理员。"
-        if not self.api_token:
-            return "❌ 插件未配置 API Token（api_token），请联系管理员。"
-
-        data = await self._query_user_stats(bili_uid, period)
+        data = await self._query_user_stats(bili_uid, period, group_id)
         if data is None:
             return (
-                "❌ 查询失败，请稍后重试。\n"
-                "可能原因：Ayabot 服务未运行、API 配置错误或网络不通。"
+                "❌ 查询失败。\n"
+                "可能原因：该群未配置 API、API 配置错误或 Ayabot 服务未运行。\n"
+                "请联系群管理员使用 /设置API 配置。"
             )
 
         return self._build_reply(data, label)
 
-    # ── 指令：绑定 UID ──
+    # ═══════════════════════════════════════════
+    #  指令：绑定 UID（全局）
+    # ═══════════════════════════════════════════
 
     @filter.command("绑定")
     async def bind_uid(self, event: AstrMessageEvent, bili_uid: int) -> None:
-        """绑定自己的 QQ 号到 B站 UID，例如：/绑定 12345678"""
+        """绑定自己的 QQ 号到 B站 UID，例如：/绑定 12345678。绑定后可在任何已配置的群中查询。"""
         qq_id = event.get_sender_id()
         if not qq_id:
             yield event.plain_result("无法获取发送者信息，请私聊机器人绑定。")
@@ -206,7 +273,7 @@ class AyabotStatsPlugin(Star):
             f"✅ 绑定成功！\n"
             f"QQ: {qq_id}\n"
             f"B站 UID: {bili_uid}{name_str}\n"
-            f"现在可以使用 /礼物查询 指令查看记录了。"
+            f"现在可以在已配置的群中使用 /礼物查询 指令查看记录了。"
         )
 
     @filter.command("解绑")
@@ -222,11 +289,13 @@ class AyabotStatsPlugin(Star):
         else:
             yield event.plain_result("❌ 你尚未绑定任何 UID。")
 
-    # ── 指令：礼物查询（手动解析参数，兼容 "/礼物查询 today" 和 "/礼物查询"）──
+    # ═══════════════════════════════════════════
+    #  指令：礼物查询（按群使用对应 API）
+    # ═══════════════════════════════════════════
 
     @filter.command("礼物查询")
     async def query_gift(self, event: AstrMessageEvent) -> None:
-        """查询礼物/盲盒统计。后跟 today/week/month/all 指定范围，默认今天。"""
+        """查询礼物/盲盒统计。后跟 today/week/month/all 指定范围，默认今天。根据当前群使用的 API 配置查询。"""
         text = event.message_str.strip()
         parts = text.split()
         period_map = {
@@ -245,10 +314,81 @@ class AyabotStatsPlugin(Star):
         result = await self._query_and_reply(event, period, label_map.get(period, "本日"))
         yield event.plain_result(result)
 
-    # ── 辅助：获取 B站 用户名 ──
+    # ═══════════════════════════════════════════
+    #  指令：群 API 配置管理（仅管理员）
+    # ═══════════════════════════════════════════
+
+    @filter.command("设置API")
+    @filter.permission_type(filter.PermissionType.ADMIN)
+    async def set_group_api(self, event: AstrMessageEvent, api_url: str, api_token: str, room_id: str = "") -> None:
+        """设置当前群的 Ayabot API 配置。需要群管理员权限。
+        用法：/设置API <API地址> <API密钥> [房间号]
+        例如：/设置API http://192.168.1.100:19810 xxxxxxxx 1992696442"""
+        group_id = event.get_group_id() if hasattr(event, "get_group_id") else ""
+        if not group_id:
+            yield event.plain_result("❌ 请在群聊中使用此命令。")
+            return
+
+        api_url = api_url.rstrip("/")
+        self._set_group_config(group_id, api_url, api_token, room_id)
+        yield event.plain_result(
+            f"✅ 当前群 API 配置已保存！\n"
+            f"API 地址: {api_url}\n"
+            f"密钥: {api_token[:6]}...{api_token[-4:]}\n"
+            f"房间号: {room_id or '(使用默认)'}\n"
+            f"群成员现在可以使用 /礼物查询 指令了。"
+        )
+
+    @filter.command("查看API")
+    async def show_group_api(self, event: AstrMessageEvent) -> None:
+        """查看当前群的 API 配置状态（密钥脱敏显示）。"""
+        group_id = event.get_group_id() if hasattr(event, "get_group_id") else ""
+
+        if group_id:
+            cfg = self._get_group_config(group_id)
+            is_custom = group_id in self._group_configs
+            lines = [
+                f"📡 当前群 API 配置",
+                f"━━━━━━━━━━━━━━━━━━",
+                f"状态: {'✅ 已配置' if is_custom else '🔄 使用全局默认'}",
+            ]
+            if cfg["api_url"]:
+                lines.append(f"地址: {cfg['api_url']}")
+            else:
+                lines.append(f"地址: ❌ 未配置")
+            if cfg["api_token"]:
+                t = cfg["api_token"]
+                masked = t[:6] + "*" * (len(t) - 10) + t[-4:] if len(t) > 12 else "****"
+                lines.append(f"密钥: {masked}")
+            else:
+                lines.append(f"密钥: ❌ 未配置")
+            if cfg["room_id"]:
+                lines.append(f"房间: {cfg['room_id']}")
+            lines.append(f"")
+            lines.append(f"管理员可输入 /设置API <地址> <密钥> [房间号] 配置")
+            yield event.plain_result("\n".join(lines))
+        else:
+            # 私聊或无群信息时显示全局默认
+            lines = ["📡 全局默认 API 配置", "━━━━━━━━━━━━━━━━━━"]
+            if self.default_api_url:
+                lines.append(f"地址: {self.default_api_url}")
+            else:
+                lines.append(f"地址: ❌ 未配置")
+            if self.default_api_token:
+                t = self.default_api_token
+                masked = t[:6] + "*" * (len(t) - 10) + t[-4:] if len(t) > 12 else "****"
+                lines.append(f"密钥: {masked}")
+            else:
+                lines.append(f"密钥: ❌ 未配置")
+            if self.default_room_id:
+                lines.append(f"房间: {self.default_room_id}")
+            yield event.plain_result("\n".join(lines))
+
+    # ═══════════════════════════════════════════
+    #  辅助：获取 B站 用户名
+    # ═══════════════════════════════════════════
 
     async def _fetch_uname(self, uid: int) -> Optional[str]:
-        """通过 B站 API 获取用户昵称。"""
         try:
             async with httpx.AsyncClient(timeout=8) as client:
                 resp = await client.get(
@@ -267,5 +407,4 @@ class AyabotStatsPlugin(Star):
         return None
 
     async def terminate(self) -> None:
-        """插件卸载/停用时的清理工作。"""
         logger.info("Ayabot 礼物统计插件已停用")
