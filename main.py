@@ -165,36 +165,29 @@ class AyabotStatsPlugin(Star):
 
         return "\n".join(lines)
 
-    async def _query_and_reply(self, event: AstrMessageEvent, period: str, label: str):
-        """查询并回复（供各 handler 调用，是一个异步生成器）。"""
+    async def _query_and_reply(self, event: AstrMessageEvent, period: str, label: str) -> str:
+        """查询并返回结果文本。"""
         qq_id = event.get_sender_id()
         if not qq_id:
-            yield event.plain_result("无法获取发送者信息。")
-            return
+            return "无法获取发送者信息。"
 
         bili_uid = self._get_bili_uid(qq_id)
         if bili_uid is None:
-            yield event.plain_result(
-                "❌ 你尚未绑定 B站 UID。\n请先使用 /绑定 <你的B站UID> 进行绑定。"
-            )
-            return
+            return "❌ 你尚未绑定 B站 UID。\n请先使用 /绑定 <你的B站UID> 进行绑定。"
 
         if not self.api_url:
-            yield event.plain_result("❌ 插件未配置 Ayabot 服务地址（api_url），请联系管理员。")
-            return
+            return "❌ 插件未配置 Ayabot 服务地址（api_url），请联系管理员。"
         if not self.api_token:
-            yield event.plain_result("❌ 插件未配置 API Token（api_token），请联系管理员。")
-            return
+            return "❌ 插件未配置 API Token（api_token），请联系管理员。"
 
         data = await self._query_user_stats(bili_uid, period)
         if data is None:
-            yield event.plain_result(
+            return (
                 "❌ 查询失败，请稍后重试。\n"
                 "可能原因：Ayabot 服务未运行、API 配置错误或网络不通。"
             )
-            return
 
-        yield event.plain_result(self._build_reply(data, label))
+        return self._build_reply(data, label)
 
     # ── 指令：绑定 UID ──
 
@@ -229,41 +222,11 @@ class AyabotStatsPlugin(Star):
         else:
             yield event.plain_result("❌ 你尚未绑定任何 UID。")
 
-    # ── 指令组：礼物查询 ──
-
-    @filter.command_group("礼物查询")
-    def gift_query():
-        """查询礼物投喂和盲盒统计。"""
-
-    @gift_query.command("today")
-    async def query_today(self, event: AstrMessageEvent):
-        """查询本日礼物/盲盒统计。"""
-        async for result in self._query_and_reply(event, "today", "本日"):
-            yield result
-
-    @gift_query.command("week")
-    async def query_week(self, event: AstrMessageEvent):
-        """查询本周礼物/盲盒统计。"""
-        async for result in self._query_and_reply(event, "week", "本周"):
-            yield result
-
-    @gift_query.command("month")
-    async def query_month(self, event: AstrMessageEvent):
-        """查询本月礼物/盲盒统计。"""
-        async for result in self._query_and_reply(event, "month", "本月"):
-            yield result
-
-    @gift_query.command("all")
-    async def query_all(self, event: AstrMessageEvent):
-        """查询全部记录以来的礼物/盲盒统计。"""
-        async for result in self._query_and_reply(event, "all", "全部记录"):
-            yield result
-
-    # ── 快捷指令：/礼物查询 带参数 ──
+    # ── 指令：礼物查询（手动解析参数，兼容 "/礼物查询 today" 和 "/礼物查询"）──
 
     @filter.command("礼物查询")
-    async def query_default(self, event: AstrMessageEvent) -> None:
-        """快捷查询：默认查今天，也可带参数 today/week/month/all。"""
+    async def query_gift(self, event: AstrMessageEvent) -> None:
+        """查询礼物/盲盒统计。后跟 today/week/month/all 指定范围，默认今天。"""
         text = event.message_str.strip()
         parts = text.split()
         period_map = {
@@ -278,8 +241,9 @@ class AyabotStatsPlugin(Star):
         else:
             period = "today"
         label_map = {"today": "本日", "week": "本周", "month": "本月", "all": "全部记录"}
-        async for result in self._query_and_reply(event, period, label_map.get(period, "本日")):
-            yield result
+
+        result = await self._query_and_reply(event, period, label_map.get(period, "本日"))
+        yield event.plain_result(result)
 
     # ── 辅助：获取 B站 用户名 ──
 
