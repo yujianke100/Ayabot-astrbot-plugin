@@ -1,13 +1,13 @@
 {
   "groups": {
     "type": "template_list",
-    "description": "QQ 群 API 配置列表（每个群独立设置 Ayabot 连接参数）",
-    "hint": "添加每个需要查询的 QQ 群及其对应的 Ayabot 连接信息。群成员绑定 B站 UID 后即可查询。",
+    "description": "QQ 群 API 配置列表（每个群独立设置）",
+    "hint": "在 Ayabot WebUI → 数据管理 → 开启 API → 复制「API 地址」和「密钥」分别填入下方两项即可。",
     "templates": {
       "group_config": {
         "name": "群配置",
         "display_item": "group_id",
-        "hint": "添加一个 QQ 群的 Ayabot API 配置",
+        "hint": "添加一个 QQ 群的 Ayabot 连接",
         "items": {
           "group_id": {
             "description": "QQ 群号",
@@ -15,20 +15,14 @@
             "default": ""
           },
           "api_url": {
-            "description": "Ayabot 服务地址",
-            "hint": "例如 http://192.168.1.100:19810",
+            "description": "API 地址（从 Ayabot 复制）",
+            "hint": "从 Ayabot WebUI 数据管理页复制的完整地址，例如 http://host:19810/api/external/user_stats?room_id=xxx",
             "type": "string",
             "default": ""
           },
           "api_token": {
-            "description": "API 密钥",
-            "hint": "从 Ayabot WebUI → 数据管理 → 复制密钥",
-            "type": "string",
-            "default": ""
-          },
-          "room_id": {
-            "description": "房间号",
-            "hint": "可留空",
+            "description": "API 密钥（从 Ayabot 复制）",
+            "hint": "从 Ayabot WebUI 数据管理页复制的密钥",
             "type": "string",
             "default": ""
           }

@@ -60,9 +60,8 @@ class AyabotStatsPlugin(Star):
                 gid = str(entry.get("group_id", "")).strip()
                 if gid:
                     self._group_configs[gid] = {
-                        "api_url": str(entry.get("api_url", "")).rstrip("/"),
+                        "api_url": str(entry.get("api_url", "")),
                         "api_token": str(entry.get("api_token", "")),
-                        "room_id": str(entry.get("room_id", "")),
                     }
             logger.info(f"已加载 {len(self._group_configs)} 个群的 API 配置")
         else:
@@ -77,7 +76,6 @@ class AyabotStatsPlugin(Star):
                 "group_id": gid,
                 "api_url": cfg["api_url"],
                 "api_token": cfg["api_token"],
-                "room_id": cfg["room_id"],
             })
         self.config["groups"] = entries
         self.config.save_config()
@@ -124,11 +122,10 @@ class AyabotStatsPlugin(Star):
         """获取指定群的 API 配置，找不到返回 None。"""
         return self._group_configs.get(group_id)
 
-    def _set_group_config(self, group_id: str, api_url: str, api_token: str, room_id: str) -> None:
+    def _set_group_config(self, group_id: str, api_url: str, api_token: str, room_id: str = "") -> None:
         self._group_configs[group_id] = {
-            "api_url": api_url.rstrip("/"),
+            "api_url": api_url,
             "api_token": api_token,
-            "room_id": room_id,
         }
         self._save_groups_to_config()
 
@@ -143,31 +140,25 @@ class AyabotStatsPlugin(Star):
             logger.error(f"群 {group_id} 未配置 API")
             return None
 
-        api_url = cfg["api_url"]
+        # api_url 是 WebUI 复制的完整地址（含 /api/external/user_stats?room_id=xxx）
+        base_url = cfg["api_url"].rstrip("?&")
         api_token = cfg["api_token"]
-        room_id = cfg["room_id"]
 
-        if not api_url:
-            logger.error("api_url 未配置")
-            return None
-        if not api_token:
-            logger.error("api_token 未配置")
+        if not base_url or not api_token:
+            logger.error(f"群 {group_id} API 配置不完整")
             return None
 
-        params = {"uid": uid, "period": period, "token": api_token}
-        if room_id:
-            params["room_id"] = room_id
-
-        url = f"{api_url}/api/external/user_stats"
+        separator = "&" if "?" in base_url else "?"
+        url = f"{base_url}{separator}uid={uid}&period={period}&token={api_token}"
 
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(url, params=params)
+                resp = await client.get(url)
                 if resp.status_code == 401:
-                    logger.error("API 密钥认证失败，请检查配置")
+                    logger.error("API 密钥认证失败")
                     return None
                 if resp.status_code != 200:
-                    logger.error(f"API 返回错误: {resp.status_code} {resp.text}")
+                    logger.error(f"API 返回错误: {resp.status_code}")
                     return None
                 data = resp.json()
                 if not data.get("ok"):
@@ -326,8 +317,8 @@ class AyabotStatsPlugin(Star):
             f"✅ 当前群 API 配置已保存！\n"
             f"API 地址: {api_url}\n"
             f"密钥: {api_token[:6]}...{api_token[-4:]}\n"
-            f"房间号: {room_id or '(使用默认)'}\n"
-            f"也可在 WebUI 插件配置页的「群配置」表格中管理所有群。"
+            f"也可在 WebUI 插件配置页的「群配置」表格中管理所有群。\n"
+            f"配置方法：从 Ayabot WebUI → 数据管理 → 复制「API 地址」和「密钥」填入即可。"
         )
 
     @filter.command("查看API")
@@ -344,7 +335,6 @@ class AyabotStatsPlugin(Star):
                 t = cfg["api_token"]
                 masked = t[:6] + "*" * (len(t) - 10) + t[-4:] if len(t) > 12 else "****"
                 lines.append(f"密钥: {masked if t else '❌ 未设置'}")
-                lines.append(f"房间: {cfg['room_id'] or '(空)'}")
             else:
                 lines.append(f"状态: ❌ 未配置")
                 lines.append(f"")
