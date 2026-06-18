@@ -156,6 +156,97 @@ git clone https://github.com/yujianke100/astrbot_plugin_ayabot_stats.git
 
 ---
 
+## 🖼️ 图片渲染说明
+
+本插件支持将查询结果渲染为精美的图片卡片（`render_mode: image` 或 `both`）。图片渲染依赖 T2I（Text-to-Image）服务，有两种方式：
+
+### 方式一：使用网络 T2I 服务（默认）
+
+插件默认使用 AstrBot 内置的网络 T2I 服务（`soulter.top` 等），无需额外配置。
+
+### 方式二：使用本地 Docker T2I 服务
+
+如果网络 T2I 服务不可用或希望本地渲染，可以部署本地 T2I 服务。
+
+**1. 在 `docker-compose.yml` 中添加本地 T2I 服务：**
+
+```yaml
+services:
+  # ... 你的其他服务（napcat, astrbot 等）...
+
+  t2i-local:
+    build: ./t2i-local
+    container_name: t2i-local
+    restart: unless-stopped
+    ports:
+      - "6199:6199"
+    networks:
+      - astrbot_network  # 确保与 astrbot 在同一网络
+```
+
+**2. 创建 `t2i-local/` 目录并放入以下文件：**
+
+<details>
+<summary><b>📄 t2i-local/Dockerfile</b></summary>
+
+```dockerfile
+FROM mcr.microsoft.com/playwright:latest
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY server.py .
+EXPOSE 6199
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "6199"]
+```
+</details>
+
+<details>
+<summary><b>📄 t2i-local/requirements.txt</b></summary>
+
+```
+fastapi>=0.100.0
+uvicorn>=0.23.0
+playwright>=1.40.0
+```
+</details>
+
+<details>
+<summary><b>📄 t2i-local/server.py</b></summary>
+
+服务端代码见仓库 `t2i-local/server.py`。
+</details>
+
+**3. 构建并启动：**
+
+```bash
+docker compose build t2i-local
+docker compose up -d t2i-local
+```
+
+**4. 在插件配置中切换为本地模式：**
+
+在 AstrBot WebUI → 插件管理 → 本插件配置中，将：
+- `t2i_mode` 设为 `local`
+- `t2i_local_url` 设为 `http://t2i-local:6199/text2img`
+
+> **配置要求**：内存 ~200MB，磁盘 ~500MB，CPU 无特殊要求（树莓派等低配设备均可运行）。
+
+---
+
+## ⚙️ 配置说明
+
+### 插件配置项
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `render_mode` | string | `text` | 查询结果发送方式：`text` 纯文字 \| `image` 图片卡片 \| `both` 同时发送 |
+| `t2i_mode` | string | `network` | 图片渲染方式：`network` 网络服务 \| `local` 本地 Docker 服务 |
+| `t2i_local_url` | string | `http://t2i-local:6199/text2img` | 本地 T2I 服务地址（`t2i_mode=local` 时使用） |
+| `groups` | template_list | — | QQ 群 API 配置列表，每个群独立配置 |
+| `bindings_file` | string | `ayabot_bindings.json` | QQ-UID 绑定数据文件（全局通用，相对于 AstrBot data 目录） |
+
+---
+
 ## 📁 项目结构
 
 ```

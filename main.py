@@ -412,10 +412,7 @@ class AyabotStatsPlugin(Star):
         if mode == "image":
             # 仅图片
             try:
-                img_data = self._build_image_data(data, label)
-                url = await asyncio.wait_for(
-                    self.html_render(GIFT_CARD_HTML, img_data), timeout=15
-                )
+                url = await self._render_image(data, label)
                 yield event.image_result(url)
             except Exception as e:
                 logger.warning(f"图片渲染失败，回退到文字: {e}")
@@ -424,10 +421,7 @@ class AyabotStatsPlugin(Star):
             # 文字 + 图片
             yield event.plain_result(self._build_text_reply(data, label))
             try:
-                img_data = self._build_image_data(data, label)
-                url = await asyncio.wait_for(
-                    self.html_render(GIFT_CARD_HTML, img_data), timeout=15
-                )
+                url = await self._render_image(data, label)
                 yield event.image_result(url)
             except Exception as e:
                 logger.warning(f"图片渲染失败: {e}")
@@ -504,6 +498,29 @@ class AyabotStatsPlugin(Star):
             "gift_details": gift_details,
             "blind_details": blind_details,
         }
+
+    async def _render_image(self, data: dict, label: str) -> str:
+        """渲染图片，根据 t2i_mode 选择本地或网络服务。"""
+        t2i_mode = str(self.config.get("t2i_mode", "network"))
+        img_data = self._build_image_data(data, label)
+        from jinja2 import Template
+        html = Template(GIFT_CARD_HTML).render(**img_data)
+
+        if t2i_mode == "local":
+            # 本地 T2I：直接 POST 到本地服务
+            local_url = str(self.config.get("t2i_local_url", "http://t2i-local:6199/text2img"))
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(local_url, data={"html": html})
+                resp.raise_for_status()
+                # 上传图片到 AstrBot 并获取 URL
+                url = await self.upload_image(resp.content)
+                return url
+        else:
+            # 网络 T2I：使用 AstrBot 内置 html_render
+            url = await asyncio.wait_for(
+                self.html_render(GIFT_CARD_HTML, img_data), timeout=15
+            )
+            return url
 
     # ═══════════════════════════════════════════
     #  指令：群 API 配置管理（仅管理员）

@@ -6,6 +6,19 @@
     "default": "text",
     "options": ["text", "image", "both"]
   },
+  "t2i_mode": {
+    "description": "图片渲染方式",
+    "hint": "network=使用远程 T2I 服务（soulter.top 等）, local=使用本地 Docker T2I 服务",
+    "type": "string",
+    "default": "network",
+    "options": ["network", "local"]
+  },
+  "t2i_local_url": {
+    "description": "本地 T2I 服务地址（t2i_mode=local 时使用）",
+    "hint": "Docker 部署时填 http://t2i-local:6199/text2img",
+    "type": "string",
+    "default": "http://t2i-local:6199/text2img"
+  },
   "groups": {
     "type": "template_list",
     "description": "QQ 群 API 配置列表（每个群独立设置）",
