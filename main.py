@@ -27,7 +27,6 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 
 
-GROUP_ID_PREFIX = "group_"
 
 
 def _get_data_dir() -> Path:
@@ -41,26 +40,8 @@ class AyabotStatsPlugin(Star):
         super().__init__(context)
         self.config = config
 
-        # 默认全局配置（按群未设置时回退使用）
-        self.default_api_url = str(config.get("api_url", "")).rstrip("/")
-        self.default_api_token = str(config.get("api_token", ""))
-        self.default_room_id = str(config.get("room_id", ""))
-
-        # 文件路径
-        bindings_rel = str(config.get("bindings_file", "ayabot_bindings.json"))
-        groups_rel = str(config.get("group_config_file", "ayabot_groups.json"))
-
-        # QQ-UID 绑定（全局）
-        self.bindings_path = _get_data_dir() / bindings_rel
-        self.bindings_path.parent.mkdir(parents=True, exist_ok=True)
-        self._bindings: dict[str, int] = {}  # qq_id -> bili_uid
-        self._load_bindings()
-
-        # 按群 API 配置
-        self.groups_path = _get_data_dir() / groups_rel
-        self.groups_path.parent.mkdir(parents=True, exist_ok=True)
-        self._group_configs: dict[str, dict] = {}  # group_id -> {api_url, api_token, room_id}
-        self._load_group_configs()
+        # 按群配置列表（来自 _conf_schema.json template_list）
+        self._load_groups_from_config()
 
     # ═══════════════════════════════════════════
     #  绑定数据持久化（全局）
@@ -101,44 +82,20 @@ class AyabotStatsPlugin(Star):
         return False
 
     # ═══════════════════════════════════════════
-    #  按群 API 配置持久化
+    #  按群 API 配置
     # ═══════════════════════════════════════════
 
-    def _load_group_configs(self) -> None:
-        if self.groups_path.exists():
-            try:
-                raw = json.loads(self.groups_path.read_text(encoding="utf-8"))
-                self._group_configs = {str(k): v for k, v in raw.items()}
-                logger.info(f"已加载 {len(self._group_configs)} 个群的 API 配置")
-            except Exception as e:
-                logger.warning(f"加载群配置失败: {e}")
-                self._group_configs = {}
-
-    def _save_group_configs(self) -> None:
-        try:
-            self.groups_path.write_text(
-                json.dumps(self._group_configs, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
-        except Exception as e:
-            logger.error(f"保存群配置失败: {e}")
-
-    def _get_group_config(self, group_id: str) -> dict:
-        """获取指定群的 API 配置，缺失字段回退到全局默认。"""
-        cfg = self._group_configs.get(group_id, {})
-        return {
-            "api_url": cfg.get("api_url", "") or self.default_api_url,
-            "api_token": cfg.get("api_token", "") or self.default_api_token,
-            "room_id": cfg.get("room_id", "") or self.default_room_id,
-        }
+    def _get_group_config(self, group_id: str) -> Optional[dict]:
+        """获取指定群的 API 配置，找不到返回 None。"""
+        return self._group_configs.get(group_id)
 
     def _set_group_config(self, group_id: str, api_url: str, api_token: str, room_id: str) -> None:
-        self._group_configs[str(group_id)] = {
-            "api_url": api_url,
+        self._group_configs[group_id] = {
+            "api_url": api_url.rstrip("/"),
             "api_token": api_token,
             "room_id": room_id,
         }
-        self._save_group_configs()
+        self._save_groups_to_config()
 
     # ═══════════════════════════════════════════
     #  API 调用
@@ -249,7 +206,7 @@ class AyabotStatsPlugin(Star):
             return (
                 "❌ 查询失败。\n"
                 "可能原因：该群未配置 API、API 配置错误或 Ayabot 服务未运行。\n"
-                "请联系群管理员使用 /设置API 配置。"
+                "请联系群管理员使用 /设置API 或前往 WebUI 插件配置页添加本群配置。"
             )
 
         return self._build_reply(data, label)
@@ -259,7 +216,7 @@ class AyabotStatsPlugin(Star):
     # ═══════════════════════════════════════════
 
     @filter.command("绑定")
-    async def bind_uid(self, event: AstrMessageEvent, bili_uid: int) -> None:
+    async def bind_uid(self, event: AstrMessageEvent, bili_uid: int):
         """绑定自己的 QQ 号到 B站 UID，例如：/绑定 12345678。绑定后可在任何已配置的群中查询。"""
         qq_id = event.get_sender_id()
         if not qq_id:
@@ -277,7 +234,7 @@ class AyabotStatsPlugin(Star):
         )
 
     @filter.command("解绑")
-    async def unbind_uid(self, event: AstrMessageEvent) -> None:
+    async def unbind_uid(self, event: AstrMessageEvent):
         """解除自己的 QQ 号与 B站 UID 的绑定。"""
         qq_id = event.get_sender_id()
         if not qq_id:
@@ -294,7 +251,7 @@ class AyabotStatsPlugin(Star):
     # ═══════════════════════════════════════════
 
     @filter.command("礼物查询")
-    async def query_gift(self, event: AstrMessageEvent) -> None:
+    async def query_gift(self, event: AstrMessageEvent):
         """查询礼物/盲盒统计。后跟 today/week/month/all 指定范围，默认今天。根据当前群使用的 API 配置查询。"""
         text = event.message_str.strip()
         parts = text.split()
@@ -336,53 +293,32 @@ class AyabotStatsPlugin(Star):
             f"API 地址: {api_url}\n"
             f"密钥: {api_token[:6]}...{api_token[-4:]}\n"
             f"房间号: {room_id or '(使用默认)'}\n"
-            f"群成员现在可以使用 /礼物查询 指令了。"
+            f"也可在 WebUI 插件配置页的「群配置」表格中管理所有群。"
         )
 
     @filter.command("查看API")
-    async def show_group_api(self, event: AstrMessageEvent) -> None:
+    async def show_group_api(self, event: AstrMessageEvent):
         """查看当前群的 API 配置状态（密钥脱敏显示）。"""
         group_id = event.get_group_id() if hasattr(event, "get_group_id") else ""
 
         if group_id:
             cfg = self._get_group_config(group_id)
-            is_custom = group_id in self._group_configs
-            lines = [
-                f"📡 当前群 API 配置",
-                f"━━━━━━━━━━━━━━━━━━",
-                f"状态: {'✅ 已配置' if is_custom else '🔄 使用全局默认'}",
-            ]
-            if cfg["api_url"]:
-                lines.append(f"地址: {cfg['api_url']}")
-            else:
-                lines.append(f"地址: ❌ 未配置")
-            if cfg["api_token"]:
+            lines = [f"📡 当前群 API 配置", f"━━━━━━━━━━━━━━━━━━"]
+            if cfg:
+                lines.append(f"状态: ✅ 已配置")
+                lines.append(f"地址: {cfg['api_url'] or '❌ 未设置'}")
                 t = cfg["api_token"]
                 masked = t[:6] + "*" * (len(t) - 10) + t[-4:] if len(t) > 12 else "****"
-                lines.append(f"密钥: {masked}")
+                lines.append(f"密钥: {masked if t else '❌ 未设置'}")
+                lines.append(f"房间: {cfg['room_id'] or '(空)'}")
             else:
-                lines.append(f"密钥: ❌ 未配置")
-            if cfg["room_id"]:
-                lines.append(f"房间: {cfg['room_id']}")
-            lines.append(f"")
-            lines.append(f"管理员可输入 /设置API <地址> <密钥> [房间号] 配置")
+                lines.append(f"状态: ❌ 未配置")
+                lines.append(f"")
+                lines.append(f"管理员可输入 /设置API <地址> <密钥> [房间号] 配置")
+                lines.append(f"或前往 WebUI 插件配置页添加本群配置。")
             yield event.plain_result("\n".join(lines))
         else:
-            # 私聊或无群信息时显示全局默认
-            lines = ["📡 全局默认 API 配置", "━━━━━━━━━━━━━━━━━━"]
-            if self.default_api_url:
-                lines.append(f"地址: {self.default_api_url}")
-            else:
-                lines.append(f"地址: ❌ 未配置")
-            if self.default_api_token:
-                t = self.default_api_token
-                masked = t[:6] + "*" * (len(t) - 10) + t[-4:] if len(t) > 12 else "****"
-                lines.append(f"密钥: {masked}")
-            else:
-                lines.append(f"密钥: ❌ 未配置")
-            if self.default_room_id:
-                lines.append(f"房间: {self.default_room_id}")
-            yield event.plain_result("\n".join(lines))
+            yield event.plain_result("📡 请在群聊中使用此命令查看当前群配置。")
 
     # ═══════════════════════════════════════════
     #  辅助：获取 B站 用户名
