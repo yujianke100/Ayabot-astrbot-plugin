@@ -35,51 +35,88 @@ import astrbot.api.message_components as Comp
 GIFT_CARD_HTML = '''<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'PingFang SC','Microsoft YaHei',sans-serif;}
-body{background:#f5f0ff;display:flex;justify-content:center;}
-.card{width:620px;background:#fff;border-radius:16px;padding:24px;margin:8px;box-shadow:0 4px 20px rgba(120,80,200,0.12);}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
-.title{font-size:22px;font-weight:700;color:#2d1b69;}
-.badge{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:14px;font-weight:600;padding:5px 16px;border-radius:20px;}
-.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(120,80,200,0.15),transparent);margin:14px 0;}
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
-.info-item{background:rgba(120,80,200,0.04);border-radius:12px;padding:14px;text-align:center;}
-.info-item .label{font-size:12px;color:#8b7dad;margin-bottom:4px;}
-.info-item .value{font-size:20px;font-weight:700;color:#2d1b69;}
-.section-title{font-size:16px;font-weight:700;color:#2d1b69;margin:14px 0 8px;}
-.gift-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(120,80,200,0.02);border-radius:10px;margin-bottom:5px;font-size:14px;}
-.gift-row .gift-left{display:flex;align-items:center;gap:10px;}
-.gift-row .gift-icon{width:28px;height:28px;border-radius:6px;object-fit:contain;flex-shrink:0;}
-.gift-row .gift-name{color:#4a3580;font-weight:500;}
-.gift-row .gift-count{color:#8b7dad;margin-left:auto;margin-right:16px;}
-.gift-row .gift-value{color:#7c3aed;font-weight:600;white-space:nowrap;}
-.box-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(124,58,237,0.07);border-radius:10px;margin:8px 0 4px;font-size:14px;font-weight:600;color:#2d1b69;}
-.box-item{display:flex;justify-content:space-between;align-items:center;padding:6px 14px 6px 18px;font-size:14px;color:#5a4570;}
-.box-item .box-left{display:flex;align-items:center;gap:8px;}
-.box-item .box-icon{width:24px;height:24px;border-radius:4px;object-fit:contain;flex-shrink:0;}
+body{background:#fff;display:flex;justify-content:center;padding:0;}
+.card{width:600px;background:#fff;padding:20px 24px;}
+/* 顶部用户信息 */
+.user-header{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+.avatar-wrap{position:relative;width:56px;height:56px;flex-shrink:0;}
+.avatar-wrap img.face{width:56px;height:56px;border-radius:50%;object-fit:cover;display:block;}
+.avatar-wrap .guard-frame{position:absolute;top:-4px;left:-4px;width:64px;height:64px;pointer-events:none;}
+.user-info{flex:1;min-width:0;}
+.user-info .uname{font-size:20px;font-weight:700;color:#2d1b69;line-height:1.3;}
+.user-info .meta{font-size:13px;color:#8b7dad;margin-top:2px;}
+.badge{display:inline-block;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:13px;font-weight:600;padding:4px 14px;border-radius:20px;flex-shrink:0;align-self:flex-start;margin-top:4px;}
+.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(120,80,200,0.12),transparent);margin:12px 0;}
+/* 统计网格 */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;}
+.stat-item{background:rgba(120,80,200,0.04);border-radius:10px;padding:10px;text-align:center;}
+.stat-item .s-label{font-size:11px;color:#8b7dad;margin-bottom:2px;}
+.stat-item .s-value{font-size:18px;font-weight:700;color:#2d1b69;}
+.section-title{font-size:15px;font-weight:700;color:#2d1b69;margin:12px 0 8px;}
+/* 礼物行 - 三列对齐 */
+.gift-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:9px 12px;background:rgba(120,80,200,0.02);border-radius:8px;margin-bottom:4px;}
+.gift-row .gift-icon{width:28px;height:28px;border-radius:6px;object-fit:contain;}
+.gift-row .gift-name{color:#4a3580;font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gift-row .gift-count{color:#8b7dad;font-size:13px;text-align:right;white-space:nowrap;}
+.gift-row .gift-value{color:#7c3aed;font-weight:600;font-size:14px;text-align:right;white-space:nowrap;min-width:60px;}
+/* 盲盒 */
+.box-header{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 12px;background:rgba(124,58,237,0.07);border-radius:8px;margin:6px 0 3px;}
+.box-header .box-title{font-size:14px;font-weight:600;color:#2d1b69;}
+.box-header .box-profit{font-size:13px;font-weight:600;text-align:right;}
+.box-item{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:5px 12px 5px 18px;}
+.box-item .box-icon{width:22px;height:22px;border-radius:4px;object-fit:contain;}
+.box-item .box-name{font-size:13px;color:#5a4570;}
+.box-item .box-num{font-size:12px;color:#8b7dad;text-align:right;}
+.box-item .box-profit{font-size:13px;text-align:right;min-width:50px;}
 .profit-plus{color:#10b981;}
 .profit-minus{color:#ef4444;}
-.footer{text-align:center;font-size:12px;color:#b0a0c8;margin-top:18px;}
+.footer{text-align:center;font-size:11px;color:#c0b0d8;margin-top:16px;}
 </style></head><body><div class="card">
-<div class="header"><span class="title">🎁 {{ uname }}</span><span class="badge">{{ label }}</span></div>
-<div class="info-grid">
-<div class="info-item"><div class="label">UID</div><div class="value">{{ uid }}</div></div>
-<div class="info-item"><div class="label">总投喂</div><div class="value">{{ total_value }}</div></div>
-{% if danmaku_count >= 0 %}<div class="info-item"><div class="label">弹幕数</div><div class="value">{{ danmaku_count }}</div></div>{% endif %}
-<div class="info-item"><div class="label">礼物数</div><div class="value">{{ gift_count }}</div></div>
-{% if blind_count > 0 %}
-<div class="info-item"><div class="label">盲盒</div><div class="value">{{ blind_count }}个</div></div>
-<div class="info-item"><div class="label">盈亏</div><div class="value" style="color:{{ 'rgb(16,185,129)' if blind_profit >= 0 else 'rgb(239,68,68)' }}">{{ '%+d'|format(blind_profit) }}</div></div>
-{% endif %}
+<div class="user-header">
+  <div class="avatar-wrap">
+    {% if avatar %}<img class="face" src="{{ avatar }}" alt="" onerror="this.style.display='none'">{% endif %}
+    <svg class="guard-frame" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" stroke="#c084fc" stroke-width="2" fill="none" opacity="0.6"/>
+      <circle cx="32" cy="32" r="28" stroke="#a78bfa" stroke-width="1" fill="none" opacity="0.3"/>
+    </svg>
+  </div>
+  <div class="user-info">
+    <div class="uname">{{ uname }}</div>
+    <div class="meta">UID {{ uid }}</div>
+  </div>
+  <span class="badge">{{ label }}</span>
 </div>
-{% if gift_details %}<div class="divider"></div><div class="section-title">🎀 礼物详情</div>
+<div class="stats-grid">
+  <div class="stat-item"><div class="s-label">总投喂</div><div class="s-value">{{ total_value }}</div></div>
+  <div class="stat-item"><div class="s-label">礼物数</div><div class="s-value">{{ gift_count }}</div></div>
+  {% if danmaku_count >= 0 %}<div class="stat-item"><div class="s-label">弹幕</div><div class="s-value">{{ danmaku_count }}</div></div>{% endif %}
+  {% if blind_count > 0 %}
+  <div class="stat-item"><div class="s-label">盲盒</div><div class="s-value">{{ blind_count }}个</div></div>
+  <div class="stat-item"><div class="s-label">盈亏</div><div class="s-value" style="color:{{ 'rgb(16,185,129)' if blind_profit >= 0 else 'rgb(239,68,68)' }}">{{ '%+d'|format(blind_profit) }}</div></div>
+  {% endif %}
+</div>
+{% if gift_details %}<div class="divider"></div><div class="section-title">🎀 礼物明细</div>
 {% for d in gift_details %}
-<div class="gift-row"><div class="gift-left">{% if d.icon %}<img class="gift-icon" src="{{ d.icon }}" alt="">{% endif %}<span class="gift-name">{{ d.name }}</span></div><span class="gift-count">x{{ d.count }}</span><span class="gift-value">{{ d.value }}</span></div>
+<div class="gift-row">
+  {% if d.icon %}<img class="gift-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% else %}<div style="width:28px"></div>{% endif %}
+  <span class="gift-name">{{ d.name }}</span>
+  <span class="gift-count">×{{ d.count }}</span>
+  <span class="gift-value">{{ d.value }}</span>
+</div>
 {% endfor %}{% endif %}
-{% if blind_details %}<div class="divider"></div><div class="section-title">📦 盲盒详情</div>
+{% if blind_details %}<div class="divider"></div><div class="section-title">📦 盲盒明细</div>
 {% for bd in blind_details %}
-<div class="box-header"><span>{{ bd.box_name }} x{{ bd.count }}</span><span class="{{ 'profit-plus' if bd.profit >= 0 else 'profit-minus' }}">{{ '%+d'|format(bd.profit) }}</span></div>
+<div class="box-header">
+  <span class="box-title">{{ bd.box_name }} ×{{ bd.count }}</span>
+  <span class="box-profit {{ 'profit-plus' if bd.profit >= 0 else 'profit-minus' }}">{{ '%+d'|format(bd.profit) }}</span>
+</div>
 {% for item in bd.get('items',[]) %}
-<div class="box-item"><div class="box-left">{% if item.icon %}<img class="box-icon" src="{{ item.icon }}" alt="">{% endif %}<span>{{ item.name }}</span></div><span>x{{ item.count }}</span><span class="{{ 'profit-plus' if item.profit >= 0 else 'profit-minus' }}">{{ '%+d'|format(item.profit) }}</span></div>
+<div class="box-item">
+  {% if item.icon %}<img class="box-icon" src="{{ item.icon }}" alt="" onerror="this.style.display='none'">{% else %}<div style="width:22px"></div>{% endif %}
+  <span class="box-name">{{ item.name }}</span>
+  <span class="box-num">×{{ item.count }}</span>
+  <span class="box-profit {{ 'profit-plus' if item.profit >= 0 else 'profit-minus' }}">{{ '%+d'|format(item.profit) }}</span>
+</div>
 {% endfor %}{% endfor %}{% endif %}
 <div class="footer">Ayabot 礼物统计 · {{ label }}</div>
 </div></body></html>'''
@@ -444,6 +481,7 @@ class AyabotStatsPlugin(Star):
         return {
             "uname": data.get("uname", f"UID:{data.get('uid', '?')}"),
             "uid": str(data.get("uid", "?")),
+            "avatar": data.get("avatar", ""),
             "label": label,
             "total_value": self._fmt(total_value),
             "danmaku_count": data.get("danmaku_count", -1),
