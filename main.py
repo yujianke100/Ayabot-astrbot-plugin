@@ -190,6 +190,13 @@ class AyabotStatsPlugin(Star):
         if total_events > 0:
             lines.append(f"🎁 礼物投喂: {total_gift_count} 个（{total_events} 次）")
             lines.append(f"💰 总价值: {total_value} 元")
+            # 礼物名称明细
+            gift_details = gift.get("details", [])
+            if gift_details:
+                parts = []
+                for d in gift_details:
+                    parts.append(f"{d['name']}x{d['count']}")
+                lines.append(f"📋 明细: {'、'.join(parts)}")
         else:
             lines.append("🎁 无送礼记录")
 
@@ -204,10 +211,15 @@ class AyabotStatsPlugin(Star):
             lines.append(f"  数量: {blind_count} 个")
             lines.append(f"  花费: {blind_cost} 元")
             lines.append(f"  价值: {blind_actual} 元")
-            if blind_profit >= 0:
-                lines.append(f"  盈亏: +{blind_profit} 元 ✅")
-            else:
-                lines.append(f"  盈亏: {blind_profit} 元 ❌")
+            lines.append(f"  盈亏: {'' if blind_profit < 0 else '+'}{blind_profit} 元 {'✅' if blind_profit >= 0 else '❌'}")
+            # 盲盒名称明细
+            blind_details = blind.get("details", [])
+            if blind_details:
+                parts = []
+                for d in blind_details:
+                    profit_str = f"{'' if d['profit_yuan'] < 0 else '+'}{d['profit_yuan']}"
+                    parts.append(f"{d['name']}x{d['count']}({profit_str})")
+                lines.append(f"📋 明细: {'、'.join(parts)}")
         else:
             lines.append(f"━━━━━━━━━━━━━━━━━━")
             lines.append("📦 无盲盒记录")
