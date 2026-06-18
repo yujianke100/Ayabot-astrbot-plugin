@@ -35,26 +35,30 @@ import astrbot.api.message_components as Comp
 GIFT_CARD_HTML = '''<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'PingFang SC','Microsoft YaHei',sans-serif;}
-body{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px;}
-.card{max-width:520px;width:100%;background:linear-gradient(145deg,#fefefe,#f5f0ff);border-radius:20px;padding:28px;box-shadow:0 8px 32px rgba(120,80,200,0.15);border:1px solid rgba(120,80,200,0.08);}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
-.title{font-size:20px;font-weight:700;color:#2d1b69;}
-.badge{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:12px;padding:4px 14px;border-radius:20px;}
-.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(120,80,200,0.2),transparent);margin:14px 0;}
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
-.info-item{background:rgba(120,80,200,0.05);border-radius:12px;padding:12px;text-align:center;}
-.info-item .label{font-size:11px;color:#8b7dad;margin-bottom:4px;}
-.info-item .value{font-size:18px;font-weight:700;color:#2d1b69;}
-.section-title{font-size:14px;font-weight:700;color:#2d1b69;margin:12px 0 8px;}
-.gift-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(120,80,200,0.03);border-radius:10px;margin-bottom:4px;font-size:13px;}
+body{background:#f5f0ff;display:flex;justify-content:center;}
+.card{width:620px;background:#fff;border-radius:16px;padding:24px;margin:8px;box-shadow:0 4px 20px rgba(120,80,200,0.12);}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+.title{font-size:22px;font-weight:700;color:#2d1b69;}
+.badge{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:14px;font-weight:600;padding:5px 16px;border-radius:20px;}
+.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(120,80,200,0.15),transparent);margin:14px 0;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.info-item{background:rgba(120,80,200,0.04);border-radius:12px;padding:14px;text-align:center;}
+.info-item .label{font-size:12px;color:#8b7dad;margin-bottom:4px;}
+.info-item .value{font-size:20px;font-weight:700;color:#2d1b69;}
+.section-title{font-size:16px;font-weight:700;color:#2d1b69;margin:14px 0 8px;}
+.gift-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(120,80,200,0.02);border-radius:10px;margin-bottom:5px;font-size:14px;}
+.gift-row .gift-left{display:flex;align-items:center;gap:10px;}
+.gift-row .gift-icon{width:28px;height:28px;border-radius:6px;object-fit:contain;flex-shrink:0;}
 .gift-row .gift-name{color:#4a3580;font-weight:500;}
-.gift-row .gift-count{color:#8b7dad;}
-.gift-row .gift-value{color:#7c3aed;font-weight:600;}
-.box-header{display:flex;justify-content:space-between;padding:8px 12px;background:rgba(124,58,237,0.08);border-radius:10px;margin:6px 0 4px;font-size:13px;font-weight:600;color:#2d1b69;}
-.box-item{display:flex;justify-content:space-between;padding:4px 12px 4px 24px;font-size:12px;color:#5a4570;}
+.gift-row .gift-count{color:#8b7dad;margin-left:auto;margin-right:16px;}
+.gift-row .gift-value{color:#7c3aed;font-weight:600;white-space:nowrap;}
+.box-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(124,58,237,0.07);border-radius:10px;margin:8px 0 4px;font-size:14px;font-weight:600;color:#2d1b69;}
+.box-item{display:flex;justify-content:space-between;align-items:center;padding:6px 14px 6px 18px;font-size:14px;color:#5a4570;}
+.box-item .box-left{display:flex;align-items:center;gap:8px;}
+.box-item .box-icon{width:24px;height:24px;border-radius:4px;object-fit:contain;flex-shrink:0;}
 .profit-plus{color:#10b981;}
 .profit-minus{color:#ef4444;}
-.footer{text-align:center;font-size:11px;color:#b0a0c8;margin-top:16px;}
+.footer{text-align:center;font-size:12px;color:#b0a0c8;margin-top:18px;}
 </style></head><body><div class="card">
 <div class="header"><span class="title">🎁 {{ uname }}</span><span class="badge">{{ label }}</span></div>
 <div class="info-grid">
@@ -69,13 +73,13 @@ body{display:flex;justify-content:center;align-items:center;min-height:100vh;pad
 </div>
 {% if gift_details %}<div class="divider"></div><div class="section-title">🎀 礼物详情</div>
 {% for d in gift_details %}
-<div class="gift-row"><span class="gift-name">{{ d.name }}</span><span class="gift-count">x{{ d.count }}</span><span class="gift-value">{{ d.value }}</span></div>
+<div class="gift-row"><div class="gift-left">{% if d.icon %}<img class="gift-icon" src="{{ d.icon }}" alt="">{% endif %}<span class="gift-name">{{ d.name }}</span></div><span class="gift-count">x{{ d.count }}</span><span class="gift-value">{{ d.value }}</span></div>
 {% endfor %}{% endif %}
 {% if blind_details %}<div class="divider"></div><div class="section-title">📦 盲盒详情</div>
 {% for bd in blind_details %}
 <div class="box-header"><span>{{ bd.box_name }} x{{ bd.count }}</span><span class="{{ 'profit-plus' if bd.profit >= 0 else 'profit-minus' }}">{{ '%+d'|format(bd.profit) }}</span></div>
 {% for item in bd.get('items',[]) %}
-<div class="box-item"><span>{{ item.name }} x{{ item.count }}</span><span class="{{ 'profit-plus' if item.profit >= 0 else 'profit-minus' }}">{{ '%+d'|format(item.profit) }}</span></div>
+<div class="box-item"><div class="box-left">{% if item.icon %}<img class="box-icon" src="{{ item.icon }}" alt="">{% endif %}<span>{{ item.name }}</span></div><span>x{{ item.count }}</span><span class="{{ 'profit-plus' if item.profit >= 0 else 'profit-minus' }}">{{ '%+d'|format(item.profit) }}</span></div>
 {% endfor %}{% endfor %}{% endif %}
 <div class="footer">Ayabot 礼物统计 · {{ label }}</div>
 </div></body></html>'''
@@ -417,6 +421,7 @@ class AyabotStatsPlugin(Star):
                 "name": d["name"],
                 "count": d["count"],
                 "value": self._fmt(d.get("value", 0)),
+                "icon": d.get("icon", ""),
             })
 
         blind_details = []
@@ -427,6 +432,7 @@ class AyabotStatsPlugin(Star):
                     "name": item["name"],
                     "count": item["count"],
                     "profit": item.get("profit", 0),
+                    "icon": item.get("icon", ""),
                 })
             blind_details.append({
                 "box_name": bd["box_name"],
